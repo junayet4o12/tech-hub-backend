@@ -1,37 +1,33 @@
 const express = require('express')
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-require('dotenv').config()
+const mongoose = require('mongoose')
 const app = express()
-const cors = require('cors')
 const jwt = require('jsonwebtoken');
-const port = process.env.PORT || 3000
-app.use(cors())
-app.use(express.json())
+const connectDB = require('./src/db/connectDB');
+const applyMiddleWare = require('./src/middlewares/applyMiddlewares');
+const port = process.env.PORT || 5000
+const authenticationRouts = require('./src/routes/authentication/index')
+applyMiddleWare(app)
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.fbi4wg4.mongodb.net/?retryWrites=true&w=majority`;
 
-const client = new MongoClient(uri, {
-    serverApi: {
-        version: ServerApiVersion.v1,
-        strict: true,
-        deprecationErrors: true,
-    }
-});
 
-async function run() {
-    try {
-        
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
-    }
-    finally {
+// app.post('/jwt', )
 
-    }
+app.use(authenticationRouts)
+app.all("*", (req, res, next) => {
+    const error = new Error(`The requested Url is invalid : [${req?.url}]`)
+    error.status = 404;
+    next(error)
+})
+app.use((err, req, res, next) => {
+    res.status(err.status || 500).json({
+        message: err.message
+    })
+})
+
+const main = async () => {
+    await connectDB();
+    app.listen(port, () => {
+        console.log(`Example app listening on port ${port}`)
+    })
 }
-app.get('/', (req, res) => {
-    res.send('Hello World!')
-})
-run().catch(console.dir);
-app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`)
-})
+main()
